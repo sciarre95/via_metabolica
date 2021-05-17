@@ -1,0 +1,14 @@
+import numpy as np
+
+#Stiamo considerando una reazione chimica con cinetica del primo ordine
+#A->P
+
+#formazione prodotto in una reazione chimica con cinetica del primo ordine
+def concentrazione_prodotto(substrato,k,t):
+    y=substrato*(1-(np.exp(-k*t)))
+    return y
+
+#decadimento substrato in una reazione chimica con cinetica del primo ordine
+def concentrazione_substrato(substrato,k,t):
+    y=substrato*(np.exp(-k*t))
+    return y
