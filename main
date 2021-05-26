@@ -69,3 +69,18 @@ for i in range(1,len(tempo_reazione_enzima)):
     concentrazione_cGMP[i]=concentrazione_cGMP[i]+concentrazione_cGMP[i-1]
     decadimento_GTP[i] = concentrazione_GTP - concentrazione_cGMP[i]
     velocita_formazione_cGMP[i] = cinetica_michaelis_menten(kcat_sCG,concentrazione_enzima_sCG, km_sCG, decadimento_GTP[i])
+
+plt.subplot(2,1,1)
+plt.xlabel('time')
+plt.ylabel('variazione GTP')
+plt.plot(tempo_reazione_enzima,decadimento_GTP)
+plt.subplot(2,1,2)
+plt.xlabel('time')
+plt.ylabel('variazione cGMP')
+plt.plot(tempo_reazione_enzima,concentrazione_cGMP)
+plt.show()
+
+plt.xlabel('concentrazione GTP')
+plt.ylabel('velocità di consumo')
+plt.plot(decadimento_GTP[::-1],velocita_formazione_cGMP[::-1])
+plt.show()
