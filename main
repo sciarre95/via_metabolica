@@ -1,27 +1,30 @@
 from cinetica_secondo_ordine import *
 from cinetica_serie_2_1 import *
+from michaelis_menten import *
 
 t_inizio=0
-t_fine=4
+t_fine=2.5
 t_campioni=5000
 time=np.linspace(t_inizio,t_fine,t_campioni)
-NO=5.84e-7
-k1=8e7
-sCG=2e-6
-k2=1.3
+NO=5.84e-7 #[mol/l] oppure [M]
+k1=8e7     #[M^(-1)*s^(-1)]
+sCG=2e-6   #[M]
+k2=1.3     #[1/s]
 
 #Esempio di reazione chimica con cinetica del secondo ordine, A+B->Prodotto
 #Grafici delle concentrazione dei substrati e del prodotto
 decadimento_NO=concentrazione_A(NO,sCG,k1,time)
 decadimento_sCG=concentraziione_B(NO,sCG,k1,time)
-prodotto_cinetica_secondo_ordine=concentrazione_P(NO,sCG,k1,time)
+#prodotto_cinetica_secondo_ordine=concentrazione_P(NO,sCG,k1,time)
 
-plt.subplot(3,1,1)
+plt.subplot(2,1,1)
+plt.xlabel('time')
+plt.ylabel('decadimento NO')
 plt.plot(time,decadimento_NO)
-plt.subplot(3,1,2)
+plt.subplot(2,1,2)
+plt.xlabel('time')
+plt.ylabel('decadimento sCG')
 plt.plot(time,decadimento_sCG)
-plt.subplot(3,1,3)
-plt.plot(time,prodotto_cinetica_secondo_ordine)
 plt.show()
 
 #Invece noi stiamo considerando due reazioni chimiche in serie. La prima reazione ha una cinetica del secondo ordine, mentre la seconda ha una cinetica del primo ordine
@@ -30,6 +33,8 @@ plt.show()
 #Si ricava risolvendo l'equazione differenziale dI/dt=-k2*I+k1*A*B quindi una equazione differenziale lineare del primo ordine
 
 concentrazione_prodotto_intermedio_I=prodotto_intermedio_serie_2_1(NO,sCG,k1,k2,t_inizio,t_fine,0,'RK45',time)
+plt.xlabel('time')
+plt.ylabel('concentrazione prodotto intermedio I, enzima non ancora attivo')
 plt.plot(time, concentrazione_prodotto_intermedio_I)
 plt.show()
 
@@ -39,5 +44,28 @@ concentrazione_prodotto_P=np.zeros(t_campioni)
 for i in range(t_campioni):
     concentrazione_prodotto_P[i]=NO+sCG-decadimento_NO[i]-decadimento_sCG[i]-concentrazione_prodotto_intermedio_I[i]
 
+plt.xlabel('time')
+plt.ylabel('concentrazione prodotto P, enzima attivo')
 plt.plot(time,concentrazione_prodotto_P)
 plt.show()
+
+#Una volta che l'enzima è attivato, trasformerà GTP in cGMP
+#La reazione è: GTP->cGMP+diphosphate, quindi 1 mole di GTP diventa 1 mole di cGMP e 1 mole di diphosphate
+x=sp.Symbol('x')
+t_inizio_reazione_enzima=t_inizio #[s]
+t_fine_reazione_enzima=30 #[s]
+tempo_reazione_enzima=np.linspace(t_inizio_reazione_enzima,t_fine_reazione_enzima,t_campioni)
+concentrazione_enzima_sCG=concentrazione_prodotto_P[t_campioni-1] #[M]
+kcat_sCG=28.7 #[1/s]
+km_sCG=49.8e-6 #[M]
+concentrazione_GTP=305e-6 #[M]
+concentrazione_cGMP=np.zeros(t_campioni)
+decadimento_GTP=np.zeros(t_campioni)
+decadimento_GTP[0]=concentrazione_GTP
+velocita_formazione_cGMP=np.zeros(t_campioni)
+velocita_formazione_cGMP[0]=cinetica_michaelis_menten(kcat_sCG,concentrazione_enzima_sCG,km_sCG,concentrazione_GTP) #[M/s]
+for i in range(1,len(tempo_reazione_enzima)):
+    concentrazione_cGMP[i]=sp.integrate(velocita_formazione_cGMP[i-1],(x,tempo_reazione_enzima[i-1],tempo_reazione_enzima[i]))
+    concentrazione_cGMP[i]=concentrazione_cGMP[i]+concentrazione_cGMP[i-1]
+    decadimento_GTP[i] = concentrazione_GTP - concentrazione_cGMP[i]
+    velocita_formazione_cGMP[i] = cinetica_michaelis_menten(kcat_sCG,concentrazione_enzima_sCG, km_sCG, decadimento_GTP[i])
