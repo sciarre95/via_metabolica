@@ -1,109 +1,386 @@
+import scipy.constants
 from cinetica_secondo_ordine import *
 from cinetica_serie_2_1 import *
 from michaelis_menten import *
 from cinetica_allosterica import *
+from inibizione_competitiva import *
+from validità import *
+from diffusione import *
 
-t_inizio=0
-t_fine=2.5
-t_campioni=5000
-time=np.linspace(t_inizio,t_fine,t_campioni)
-NO=5.84e-7 #[mol/l] oppure [M]
-k1=8e7     #[M^(-1)*s^(-1)]
-sCG=2e-6   #[M]
-k2=1.3     #[1/s]
+t_inizio = 0
+t_fine = 4
+t_campioni = 100000
+tempo_diffusione = np.linspace(t_inizio, t_fine, t_campioni)
 
-#Esempio di reazione chimica con cinetica del secondo ordine, A+B->Prodotto
-#Grafici delle concentrazione dei substrati e del prodotto
-decadimento_NO=concentrazione_A(NO,sCG,k1,time)
-decadimento_sCG=concentraziione_B(NO,sCG,k1,time)
-#prodotto_cinetica_secondo_ordine=concentrazione_P(NO,sCG,k1,time)
+#struttura di un vaso sanguigno
+raggio_lume = 2e-3  # [m]
+spessore_tonaca_intima = 0.2e-3  # [m]
+spessore_tonaca_media = 0.75e-3  # [m]
+spessore_membrana_separazione_tonache = 50e-9 + 30e-6  # [m]
+tratto_vaso = 10e-3  # [m]
+volume_tonaca_intima = (np.pi*((raggio_lume+spessore_tonaca_intima)**2 - raggio_lume**2))*tratto_vaso  # [m^3]
+volume_tonaca_media = (np.pi*((raggio_lume+spessore_tonaca_intima+spessore_membrana_separazione_tonache+spessore_tonaca_media)**2 - (raggio_lume+spessore_tonaca_intima+spessore_membrana_separazione_tonache)**2))*tratto_vaso  # [m^3]
+area_scambio_membrana = (2 * np.pi * ((raggio_lume + spessore_tonaca_intima) + (raggio_lume + spessore_tonaca_intima + spessore_membrana_separazione_tonache))) * tratto_vaso  # [m^2]
+
+#dati ossido nitrico NO
+coefficiente_diffusione_D = 3e-9  # [m^(2)*s^(-1)]
+concentrazione_tonaca_intima_NO = np.zeros(t_campioni)
+concentrazione_tonaca_intima_NO[0] = 5.84e-7*1000  # [mol/m^3]
+moli_NO_tonaca_intima = np.zeros(t_campioni)
+moli_NO_tonaca_intima[0] = concentrazione_tonaca_intima_NO[0] * volume_tonaca_intima  # [mol]
+concentrazione_tonaca_media_NO = np.zeros(t_campioni)
+moli_NO_tonaca_media = np.zeros(t_campioni)
+moli_NO_diffuse = np.zeros(t_campioni)
+
+#diffusione da tonaca intima a tonaca media
+for i in range(1, len(tempo_diffusione)):
+    moli_NO_diffuse[i] = diffusione(coefficiente_diffusione_D,area_scambio_membrana,spessore_membrana_separazione_tonache,concentrazione_tonaca_intima_NO[i-1],concentrazione_tonaca_media_NO[i-1],tempo_diffusione[i],tempo_diffusione[i-1])
+    moli_NO_tonaca_intima[i] = moli_NO_tonaca_intima[i-1]-moli_NO_diffuse[i]
+    moli_NO_tonaca_media[i] = moli_NO_diffuse[i]+moli_NO_tonaca_media[i-1]
+    concentrazione_tonaca_intima_NO[i] = moli_NO_tonaca_intima[i] / volume_tonaca_intima
+    concentrazione_tonaca_media_NO[i] = moli_NO_tonaca_media[i] / volume_tonaca_media
+    if concentrazione_tonaca_intima_NO[i] < concentrazione_tonaca_media_NO[i]:
+        break
 
 plt.subplot(2,1,1)
-plt.xlabel('time')
-plt.ylabel('decadimento NO')
-plt.plot(time,decadimento_NO)
+plt.xlabel('tempo diffusione [s]')
+plt.ylabel('concentrazione di NO tunica intima [mol/m^3]')
+plt.plot(tempo_diffusione,concentrazione_tonaca_intima_NO)
 plt.subplot(2,1,2)
-plt.xlabel('time')
+plt.xlabel('tempo diffusione [s]')
+plt.ylabel('concentrazione di NO tunica media [mol/m^3]')
+plt.plot(tempo_diffusione,concentrazione_tonaca_media_NO)
+plt.show()
+
+plt.xlabel('tempo diffusione [s]')
+plt.ylabel('moli di NO che attraversano la membrana [mol]')
+plt.plot(tempo_diffusione,moli_NO_diffuse)
+plt.show()
+
+#attivazione enzima guanilato ciclasi
+t_fine_attivazione = 1
+tempo_attivazione = np.linspace(t_inizio, t_fine_attivazione, t_campioni)
+concentrazione_NO = (concentrazione_tonaca_media_NO[t_campioni-1])/1000  # [mol/l] o [M]
+k1 = 8e7  # [M^(-1)*s^(-1)]
+sCG = 2e-6  # [M]
+k2 = 1.3  # [1/s]
+
+# Reazione chimica con cinetica del secondo ordine, A+B->Prodotto
+# Grafici delle concentrazione dei substrati
+decadimento_NO = concentrazione_A(concentrazione_NO, sCG, k1, tempo_attivazione)
+decadimento_sCG = concentrazione_B(concentrazione_NO, sCG, k1, tempo_attivazione)
+# prodotto_cinetica_secondo_ordine=concentrazione_P(NO,sCG,k1,time)
+
+plt.subplot(2, 1, 1)
+plt.xlabel('tempo attivazione')
+plt.ylabel('decadimento NO')
+plt.plot(tempo_attivazione, decadimento_NO)
+plt.subplot(2, 1, 2)
+plt.xlabel('tempo attivazione')
 plt.ylabel('decadimento sCG')
-plt.plot(time,decadimento_sCG)
+plt.plot(tempo_attivazione, decadimento_sCG)
 plt.show()
 
-#Invece noi stiamo considerando due reazioni chimiche in serie. La prima reazione ha una cinetica del secondo ordine, mentre la seconda ha una cinetica del primo ordine
-#A+B->I->P
-#Questa funzione vuole rappresentrare la concentrazione di I nel tempo
-#Si ricava risolvendo l'equazione differenziale dI/dt=-k2*I+k1*A*B quindi una equazione differenziale lineare del primo ordine
+# Invece noi stiamo considerando due reazioni chimiche in serie. La prima reazione ha una cinetica del secondo ordine, mentre la seconda ha una cinetica del primo ordine
+# A+B->I->P
+# Questa funzione vuole rappresentrare la concentrazione di I nel tempo
+# Si ricava risolvendo l'equazione differenziale dI/dt=-k2*I+k1*A*B quindi una equazione differenziale lineare del primo ordine
 
-concentrazione_prodotto_intermedio_I=prodotto_intermedio_serie_2_1(NO,sCG,k1,k2,t_inizio,t_fine,0,'RK45',time)
+concentrazione_enzima_non_attivo = prodotto_intermedio_serie_2_1(concentrazione_NO, sCG, k1, k2, t_inizio, t_fine, 0, 'RK45', tempo_attivazione)
 plt.xlabel('time')
-plt.ylabel('concentrazione prodotto intermedio I, enzima non ancora attivo')
-plt.plot(time, concentrazione_prodotto_intermedio_I)
+plt.ylabel('concentrazione enzima non ancora attivo')
+plt.plot(tempo_attivazione, concentrazione_enzima_non_attivo)
 plt.show()
 
-#Per il bilancio di massa vale: P=A0+B0-A-B-I
+# NO si lega al recettore presente nell'enzima guanilato ciclasi, che si trasforma in una versione che non rappresenta ancora l'enzima attivo, una forma intermedia
+# La forma intermedia poi con una reazione cinetica di ordine 1 diventerà l'enzima attivo vero e proprio
+# La concentrazione dell'enzima attivo quindi dipenderà dalla concentrazione iniziale dell'enzima guanilato ciclasi, che si legerà con NO presente per dare la forma intermedia
+# ed infine questa forma intermedia darà l'enzima attivo
+# Allora per calcolare la concentrazione dell'enzima attivo sono andato a sottrarre alla concentrazione iniziale dell'enzima il valore del vettore che mi indica il decadimento
+# della concentrazione dell'enzima. Il valore di questa sottrazione sarà pari alla quantità di enzima nella forma intermedia
+# A questa quantità quindi vado a sottrarre il valore del vettore che mi indica la concentrazione dell'enzima non attivo,
+# che tiene conto che una parte è stata usata per formare l'enzima attivo, infatti per avere questo vettore sono andato a risolvere una equazione differenziale del tipo
+# dI/dt=-k2*I+k1*A*B. Il risultato sarà proprio la concentrazione dell'enzima attivo.
 
-concentrazione_prodotto_P=np.zeros(t_campioni)
+
+concentrazione_enzima_attivo = np.zeros(t_campioni)
 for i in range(t_campioni):
-    concentrazione_prodotto_P[i]=NO+sCG-decadimento_NO[i]-decadimento_sCG[i]-concentrazione_prodotto_intermedio_I[i]
-
+    concentrazione_enzima_attivo[i] = sCG - decadimento_sCG[i] - concentrazione_enzima_non_attivo[i]
+    if concentrazione_enzima_attivo[i] < 0:
+        concentrazione_enzima_attivo[i] = 0
 plt.xlabel('time')
-plt.ylabel('concentrazione prodotto P, enzima attivo')
-plt.plot(time,concentrazione_prodotto_P)
+plt.ylabel('concentrazione enzima attivo')
+plt.plot(tempo_attivazione, concentrazione_enzima_attivo)
 plt.show()
 
-#Una volta che l'enzima è attivato, trasformerà GTP in cGMP
-#La reazione è: GTP->cGMP+diphosphate, quindi 1 mole di GTP diventa 1 mole di cGMP e 1 mole di diphosphate
-#Una volta che il cGMP si è formato, la fosfodiesterasi di tipo 5 PDE5 utilizzerà questo cGMP come substrato per ottenere
-#GMP, che è biologicamente inattivo. La reazione è: cGMP+H20->GMP, quindi 1 mole di cGMP da origine a 1 mole di GMP
-#L'acqua ovviamente è presente in quantità molto elevate e la sua concentrazione non risente di questa reazione chimica
+# Una volta che l'enzima è attivato, trasformerà GTP in cGMP
+# La reazione è: GTP->cGMP+diphosphate, quindi 1 mole di GTP diventa 1 mole di cGMP e 1 mole di diphosphate
+# Una volta che il cGMP si è formato, la fosfodiesterasi di tipo 5 PDE5 utilizzerà questo cGMP come substrato per ottenere
+# GMP, che è biologicamente inattivo. La reazione è: cGMP+H20->GMP, quindi 1 mole di cGMP da origine a 1 mole di GMP
+# L'acqua ovviamente è presente in quantità molto elevate e la sua concentrazione non risente di questa reazione chimica
+# Oltre a questa reazione catalizzata dalla PDE5 in parallelo avviene un altro tipo di reazione, ovvero il legame del cGMP ai recettori presenti sulle proteine PKG attivandole
+# Esistono due isoforme di queste proteine: a noi interessa l'isoforma beta, perché è questa che si lega agli IRAG, i quali vanno ad inibire i recettori
+# dell'inositolo trifosfato non permettendo la fuoriuscita degli ioni calcio dal reticolo sarcoplasmatico
 
-x=sp.Symbol('x')
-t_inizio_reazione_enzima=t_inizio #[s]
-t_fine_reazione_enzima=900 #[s]
-tempo_reazione_enzima=np.linspace(t_inizio_reazione_enzima,t_fine_reazione_enzima,t_campioni)
-concentrazione_enzima_sCG=concentrazione_prodotto_P[t_campioni-1] #[M]
-kcat_sCG=28.7 #[1/s]
-km_sCG=49.8e-6 #[M]
-coefficienti_hill=np.array([1,1.2,1.4,1.6])
-km_PDE5=6e-6
-kcat_PDE5=2.28
-concentrazione_enzima_PDE5=188e-9
-concentrazione_GMP=np.zeros(t_campioni)
-concentrazione_GTP=305e-6 #[M]
-produzione_cGMP_da_GTP=np.zeros(t_campioni)
-decadimento_GTP=np.zeros(t_campioni)
-decadimento_GTP[0]=concentrazione_GTP
-decadimento_cGMP=np.zeros(t_campioni)
-velocita_formazione_cGMP=np.zeros(t_campioni)
-velocita_formazione_GMP=np.zeros(t_campioni)
-velocita_formazione_cGMP[0]=cinetica_michaelis_menten(kcat_sCG,concentrazione_enzima_sCG,km_sCG,concentrazione_GTP) #[M/s]
-for i in range(1,len(tempo_reazione_enzima)):
-    if decadimento_cGMP[i]<0.3e-6:
-        coefficiente_hill=coefficienti_hill[0]
-    elif decadimento_cGMP[i]>=0.3e-6 and decadimento_cGMP[i]<1e-6:
-        coefficiente_hill=coefficienti_hill[1]
-    elif decadimento_cGMP[i]>=1e-6 and decadimento_cGMP[i]<10e-6:
-        coefficiente_hill=coefficienti_hill[2]
-    elif decadimento_cGMP[i]>=10e-6:
-        coefficiente_hill=coefficienti_hill[3]
-    produzione_cGMP_unita_tempo=sp.integrate(velocita_formazione_cGMP[i-1],(x,tempo_reazione_enzima[i-1],tempo_reazione_enzima[i]))
-    produzione_cGMP_da_GTP[i] = produzione_cGMP_unita_tempo + produzione_cGMP_da_GTP[i-1]
-    decadimento_GTP[i] = concentrazione_GTP - produzione_cGMP_da_GTP[i]
-    produzione_GMP_unita_tempo=sp.integrate(velocita_formazione_GMP[i-1],(x,tempo_reazione_enzima[i-1],tempo_reazione_enzima[i]))
-    concentrazione_GMP[i]=produzione_GMP_unita_tempo+concentrazione_GMP[i-1]
-    decadimento_cGMP[i]=produzione_cGMP_unita_tempo-produzione_GMP_unita_tempo+decadimento_cGMP[i-1]
-    velocita_formazione_cGMP[i]=cinetica_michaelis_menten(kcat_sCG,concentrazione_enzima_sCG,km_sCG,decadimento_GTP[i])
-    velocita_formazione_GMP[i]=cinetica_allosterica(kcat_PDE5,concentrazione_enzima_PDE5,km_PDE5,decadimento_cGMP[i],coefficiente_hill)
 
-plt.subplot(3,1,3)
-plt.xlabel('time')
-plt.ylabel('produzione GMP')
-plt.plot(tempo_reazione_enzima,concentrazione_GMP)
-plt.subplot(3,1,1)
-plt.xlabel('time')
-plt.ylabel('consumo del GTP')
-plt.plot(tempo_reazione_enzima,decadimento_GTP)
-plt.subplot(3,1,2)
-plt.xlabel('time')
-plt.ylabel('variazione del cGMP')
-plt.plot(tempo_reazione_enzima,decadimento_cGMP)
+t_inizio_reazione_enzima = t_inizio  # [s]
+t_fine_reazione_enzima = 900  # [s]
+tempo_reazione_enzima = np.linspace(t_inizio_reazione_enzima, t_fine_reazione_enzima, t_campioni)
+concentrazione_enzima_sCG = concentrazione_enzima_attivo[t_campioni - 1]  # [M]
+kcat_sCG = 28.7  # [1/s]
+km_sCG = 49.8e-6  # [M]
+coefficienti_hill = np.array([1, 1.2, 1.4, 1.6])
+km_PDE5 = 6e-6  # [M]
+kcat_PDE5 = 2.28  # [1/s]
+efficienza_cinetica = kcat_PDE5 / km_PDE5  # [M^(-1)*s^(-1)]
+concentrazione_enzima_PDE5 = 188e-9
+concentrazione_GTP = 305e-6  # [M]
+concentrazione_PKG_I_B = 1e-6
+complessi_PKG_I_B = np.zeros(t_campioni)
+recettori_totali_PKG_I_B = concentrazione_PKG_I_B * 4
+kd_PKG_I_B = 1e-6  # [M]
+kr_PKG_I_B = 0.054  # [1/s]
+kf_PKG_I_B = kr_PKG_I_B / kd_PKG_I_B  # [M^(-1)*s^(-1)]
+lista = []
+
+ode_fn = lambda t, x: -cinetica_michaelis_menten(kcat_sCG, concentrazione_enzima_sCG, km_sCG, x)
+num_sol = solve_ivp(ode_fn, [tempo_reazione_enzima[0], tempo_reazione_enzima[-1]], [concentrazione_GTP], method='RK45',
+                    dense_output=True)
+x_num_sol = num_sol.sol(tempo_reazione_enzima).T
+y = []
+for i in range(
+        len(x_num_sol)):  # Python mi restituisce anche valori negativi per la soluzione dell'equazione differenziale, ma valori negativi per una concentrazione non hanno senso, quindi invece che essere negativi devo porli a 0
+    if x_num_sol[i] <= 0 and i != 0:
+        y.append(i)
+if len(y) != 0:
+    for i in range(len(x_num_sol)):
+        if i >= y[0]:
+            x_num_sol[i] = 0
+for i in x_num_sol:  # Questo ciclo for mi serve perché gli elementi del vettore x_num_sol sono anch'essi dei vettori. Questo è scomodo e facendo così riesco ad ottenere una lista, i cui elementi non sono vettori. Poi questa lista la ritrasformerò in vettore
+    for j in i:
+        x = j
+        x1 = float(x)
+        lista.append(x1)
+
+variazione_GTP = np.array(lista)
+variazione_cGMP = np.zeros(t_campioni)
+variazione_GMP = np.zeros(t_campioni)
+coefficiente_hill = 1
+
+for i in range(1, len(tempo_reazione_enzima)):
+    ode_fn1 = lambda t, x: -cinetica_allosterica(kcat_PDE5, concentrazione_enzima_PDE5, km_PDE5, x,
+                                                 coefficiente_hill) + cinetica_michaelis_menten(kcat_sCG,
+                                                                                                concentrazione_enzima_sCG,
+                                                                                                km_sCG, variazione_GTP[
+                                                                                                    i]) - kf_PKG_I_B * x * (
+                                   recettori_totali_PKG_I_B - complessi_PKG_I_B[i - 1]) * np.exp(
+        -kf_PKG_I_B * x * t)
+    num_sol1 = solve_ivp(ode_fn1, [tempo_reazione_enzima[i - 1], tempo_reazione_enzima[i]], [variazione_cGMP[i - 1]],
+                         method='RK45', dense_output=True)
+    x_num_sol1 = num_sol1.sol([tempo_reazione_enzima[i - 1], tempo_reazione_enzima[i]]).T
+    variazione_cGMP[i] = x_num_sol1[1]
+    somma_complessi_e_GMP = (305e-6) - variazione_GTP[i] - variazione_cGMP[i]
+    variazione_GMP[i] = somma_complessi_e_GMP * efficienza_cinetica / (efficienza_cinetica + kf_PKG_I_B)
+    complessi_PKG_I_B[i] = somma_complessi_e_GMP * kf_PKG_I_B / (efficienza_cinetica + kf_PKG_I_B)
+    if variazione_cGMP[i] < 0.3e-6:
+        coefficiente_hill = coefficienti_hill[0]
+    elif 0.3e-6 <= variazione_cGMP[i] < 1e-6:
+        coefficiente_hill = coefficienti_hill[1]
+    elif 1e-6 <= variazione_cGMP[i] < 10e-6:
+        coefficiente_hill = coefficienti_hill[2]
+    elif variazione_cGMP[i] >= 10e-6:
+        coefficiente_hill = coefficienti_hill[3]
+    if complessi_PKG_I_B[i] >= recettori_totali_PKG_I_B:
+        break
+
+variazione_cGMP[i] = variazione_cGMP[i] + complessi_PKG_I_B[i] - recettori_totali_PKG_I_B
+complessi_PKG_I_B[i:t_campioni] = recettori_totali_PKG_I_B
+
+for j in range(i + 1, len(tempo_reazione_enzima)):
+    ode_fn2 = lambda t, x: -cinetica_allosterica(kcat_PDE5, concentrazione_enzima_PDE5, km_PDE5, x,
+                                                 coefficiente_hill) + cinetica_michaelis_menten(kcat_sCG,
+                                                                                                concentrazione_enzima_sCG,
+                                                                                                km_sCG,
+                                                                                                variazione_GTP[j])
+    num_sol2 = solve_ivp(ode_fn2, [tempo_reazione_enzima[j - 1], tempo_reazione_enzima[j]], [variazione_cGMP[j - 1]],
+                         method='RK45', dense_output=True)
+    x_num_sol2 = num_sol2.sol([tempo_reazione_enzima[j - 1], tempo_reazione_enzima[j]]).T
+    variazione_cGMP[j] = x_num_sol2[1]
+    if variazione_cGMP[i] < 0.3e-6:
+        coefficiente_hill = coefficienti_hill[0]
+    elif 0.3e-6 <= variazione_cGMP[i] < 1e-6:
+        coefficiente_hill = coefficienti_hill[1]
+    elif 1e-6 <= variazione_cGMP[i] < 10e-6:
+        coefficiente_hill = coefficienti_hill[2]
+    elif variazione_cGMP[i] >= 10e-6:
+        coefficiente_hill = coefficienti_hill[3]
+    variazione_GMP[j] = (305e-6) - variazione_GTP[j] - variazione_cGMP[j] - complessi_PKG_I_B[j]
+
+plt.subplot(4, 1, 1)
+plt.plot(tempo_reazione_enzima, variazione_GTP)
+plt.subplot(4, 1, 2)
+plt.plot(tempo_reazione_enzima, variazione_cGMP)
+plt.subplot(4, 1, 3)
+plt.plot(tempo_reazione_enzima, variazione_GMP)
+plt.subplot(4, 1, 4)
+plt.plot(tempo_reazione_enzima, complessi_PKG_I_B)
+plt.show()
+
+# Come verifica vado a sommare per ogni istante di tempo tutti i diversi termini e se è tutto giusto la somma mi deve restituire sempre la concentrazione iniziale di GTP
+
+# for i in range(t_campioni):
+#    print(variazione_GTP[i] + variazione_cGMP[i] + variazione_GMP[i] + complessi_PKG_I_B[i])
+
+# Una volta che le PKG_I_B si sono attivate, grazie al legame tra cGMP e i 4 siti di legame, vanno a fosforilare gli IRAG. Gli IRAG fosforilati andranno ad inibire i recettori
+# dell'inositolo trifosfato. Come questo avvenga è ancora poco chiaro, quindi la modellazione si ferma con la fosforilazione degli IRAG
+# Gli IRAG sono proteine di membrana che si trovano sulla membrana del reticolo sarcoplasmatico. Formano dei complessi molecolari con i recettori dell'inositolo trifosfato
+# Poiché in letteratura non sono stati trovati dei dati sulla concentrazione degli IRAG, abbiamo utilizzato i dati trovati per recettori dell'inositolo sul reticolo sarcoplasmatico,
+# in quanto, come abbiamo detto prima, IRAG sono sempre legati ai recettori dell'inositolo per formare complessi molecolari, quindi ci saranno tanti IRAG quanti recettori dell'inositolo
+# sulla superficie del reticolo sarcoplasmatico
+
+raggio_cellula_eucariote = 10e-6  # [m]
+volume_cellula_eucariote = np.pi * (4 / 3) * raggio_cellula_eucariote ** 3  # [m^3]
+volume_reticolo_sarcoplasmatico = (14.2 / 100) * volume_cellula_eucariote
+raggio_reticolo_sarcoplasmatico = pow(volume_reticolo_sarcoplasmatico * 3 / (4 * np.pi), 1 / 3)
+superficie_reticolo_sarcoplasmatico = 4 * np.pi * raggio_reticolo_sarcoplasmatico ** 2  # [m^2]
+densita_superficiale_IP3R1 = 7.2e12  # [1/m^(2)]
+densita_superficiale_IP3R2 = 8.4e12
+densita_superficiale_IP3R3 = 6.5e12
+recettori_IP3R1_reticolo_sarcoplasmatico = superficie_reticolo_sarcoplasmatico * densita_superficiale_IP3R1
+recettori_IP3R2_reticolo_sarcoplasmatico = superficie_reticolo_sarcoplasmatico * densita_superficiale_IP3R2
+recettori_IP3R3_reticolo_sarcoplasmatico = superficie_reticolo_sarcoplasmatico * densita_superficiale_IP3R3
+recettori_IP3R_totali = recettori_IP3R1_reticolo_sarcoplasmatico + recettori_IP3R2_reticolo_sarcoplasmatico + recettori_IP3R3_reticolo_sarcoplasmatico
+moli_IP3R_totali = recettori_IP3R_totali / scipy.constants.Avogadro
+
+# Ci saranno tante moli di IRAG quante moli di IP3R, visto che IRAG si lega a tutte le subunità di IP3R situate sul reticolo sarcoplasmatico per formare complessi molecolari
+
+t_inizio_fosforilazione = t_inizio  # [s]
+t_fine_fosforilazione = 12  # [s]
+tempo_fosforilazione = np.linspace(t_inizio_fosforilazione, t_fine_fosforilazione, t_campioni)
+moli_IRAG = moli_IP3R_totali  # per ottenere la concentrazione, mi basterà dividere per il volume che contiene le moli, ovvero il volume della cellula espresso in litri
+concentrazione_IRAG = moli_IRAG / (volume_cellula_eucariote * 10 ** 3)
+proteine_PKG_I_B_attivate = complessi_PKG_I_B[-1]
+km_PKG_I_B = 17.3e-6
+kcat_PKG_I_B = 1.2
+
+ode_fn3 = lambda t, x: -cinetica_michaelis_menten(kcat_PKG_I_B, proteine_PKG_I_B_attivate, km_PKG_I_B, x)
+num_sol3 = solve_ivp(ode_fn3, [tempo_fosforilazione[0], tempo_fosforilazione[-1]], [concentrazione_IRAG], method='RK45',
+                     dense_output=True)
+x_num_sol3 = num_sol3.sol(tempo_fosforilazione).T
+y1 = []
+lista1 = []
+for i in range(
+        len(x_num_sol3)):  # Python mi restituisce anche valori negativi per la soluzione dell'equazione differenziale, ma valori negativi per una concentrazione non hanno senso, quindi invece che essere negativi devo porli a 0
+    if x_num_sol3[i] <= 0 and i != 0:
+        y1.append(i)
+if len(y1) != 0:
+    for i in range(len(x_num_sol3)):
+        if i >= y1[0]:
+            x_num_sol3[i] = 0
+for i in x_num_sol3:  # Questo ciclo for mi serve perché gli elementi del vettore x_num_sol sono anch'essi dei vettori. Questo è scomodo e facendo così riesco ad ottenere una lista, i cui elementi non sono vettori. Poi questa lista la ritrasformerò in vettore
+    for j in i:
+        x = j
+        x1 = float(x)
+        lista1.append(x1)
+
+variazione_IRAG = np.array(lista1)
+concentrazione_IRAG_fosforilati = np.zeros(t_campioni)
+for i in range(t_campioni):
+    concentrazione_IRAG_fosforilati[i] = concentrazione_IRAG - variazione_IRAG[i]
+
+# plt.subplot(2,1,1)
+# plt.plot(tempo_fosforilazione,variazione_IRAG)
+# plt.subplot(2,1,2)
+plt.plot(tempo_fosforilazione, concentrazione_IRAG_fosforilati)
+plt.show()
+
+# A questo punto l'ultima cosa che manca è mostrare come agisce l'azione inibitoria del sildenafil sulle PDE5
+# Così facendo la velocità con la quale PDE5 trasforma il cGMP in GMP biologicamente inattivo viene ridotta, ci vorrà più tempo
+# affinché le PDE5 azzerrino la concentrazione di cGMP presente. Questo si tradurrà in un rilassamento muscolare, l'effetto biologico
+# del cGMP, più intenso/più duraturo nel tempo.
+# L'idea è quindi mettere a confronto il grafico mostrato precedentemente della variazione della concentrazione di cGMP con
+# un nuovo grafico che mostra sempre la variazione della concentrazione di cGMP, con stessi parametri e condizioni iniziali, ma con
+# la presenza dell'inibitore sildenafil
+
+Ki_sildenafil = 2.2e-9  # [M]
+Peso_molecolare_sildenafil = 474.6  # [g/mol]
+# massima concentrazione nel plasma di sildenafil assunto in quantità 50 mg per via orale ricavata da articolo
+sildenafil_max = 159e-6  # [g/l]
+concentrazione_sildenafil_max = sildenafil_max / Peso_molecolare_sildenafil  # [M]
+t_half_life = 4.07  # [h]
+kr_sildenafil = (np.log(2) / (t_half_life * 60 * 60))
+kf_sildenafil = kr_sildenafil / Ki_sildenafil
+
+# Come varia la concentrazione dell'inibitore, cioè del sildenafil, nel tempo?
+
+variazione_sildenafil = concentrazione_A(concentrazione_sildenafil_max, concentrazione_enzima_PDE5, kf_sildenafil,
+                                         tempo_reazione_enzima)
+# plt.plot(tempo_reazione_enzima,variazione_sildenafil)
+# plt.show()
+
+# Paragoniamo la variazione di cGMP in assenza del sildenafil con la variazione di cGMP in presenza del sildenafil
+
+variazione_cGMP_con_sildenafil = np.zeros(t_campioni)
+
+for i in range(1, len(tempo_reazione_enzima)):
+    ode_fn4 = lambda t, x: -inibizione_competitiva_sildenafil(kcat_PDE5, concentrazione_enzima_PDE5, km_PDE5, x,
+                                                              coefficiente_hill, Ki_sildenafil,
+                                                              variazione_sildenafil[i]) + cinetica_michaelis_menten(
+        kcat_sCG,
+        concentrazione_enzima_sCG,
+        km_sCG, variazione_GTP[
+            i]) - kf_PKG_I_B * x * (
+                                   recettori_totali_PKG_I_B - complessi_PKG_I_B[i - 1]) * np.exp(
+        -kf_PKG_I_B * x * t)
+    num_sol4 = solve_ivp(ode_fn4, [tempo_reazione_enzima[i - 1], tempo_reazione_enzima[i]],
+                         [variazione_cGMP_con_sildenafil[i - 1]],
+                         method='RK45', dense_output=True)
+    x_num_sol4 = num_sol4.sol([tempo_reazione_enzima[i - 1], tempo_reazione_enzima[i]]).T
+    variazione_cGMP_con_sildenafil[i] = x_num_sol4[1]
+    somma_complessi_e_GMP_con_sildenafil = (305e-6) - variazione_GTP[i] - variazione_cGMP_con_sildenafil[i]
+    efficienza_cinetica_con_sildenafil = kcat_PDE5 / (km_PDE5 * (1 + variazione_sildenafil[i] / Ki_sildenafil))
+    variazione_GMP[i] = somma_complessi_e_GMP_con_sildenafil * efficienza_cinetica_con_sildenafil / (
+                efficienza_cinetica_con_sildenafil + kf_PKG_I_B)
+    complessi_PKG_I_B[i] = somma_complessi_e_GMP_con_sildenafil * kf_PKG_I_B / (
+                efficienza_cinetica_con_sildenafil + kf_PKG_I_B)
+    if variazione_cGMP_con_sildenafil[i] < 0.3e-6:
+        coefficiente_hill = coefficienti_hill[0]
+    elif 0.3e-6 <= variazione_cGMP_con_sildenafil[i] < 1e-6:
+        coefficiente_hill = coefficienti_hill[1]
+    elif 1e-6 <= variazione_cGMP_con_sildenafil[i] < 10e-6:
+        coefficiente_hill = coefficienti_hill[2]
+    elif variazione_cGMP_con_sildenafil[i] >= 10e-6:
+        coefficiente_hill = coefficienti_hill[3]
+    if complessi_PKG_I_B[i] >= recettori_totali_PKG_I_B:
+        break
+
+variazione_cGMP_con_sildenafil[i] = variazione_cGMP[i] + complessi_PKG_I_B[i] - recettori_totali_PKG_I_B
+complessi_PKG_I_B[i:t_campioni] = recettori_totali_PKG_I_B
+
+for j in range(i + 1, len(tempo_reazione_enzima)):
+    ode_fn5 = lambda t, x: -inibizione_competitiva_sildenafil(kcat_PDE5, concentrazione_enzima_PDE5, km_PDE5, x,
+                                                              coefficiente_hill, Ki_sildenafil,
+                                                              variazione_sildenafil[j]) + cinetica_michaelis_menten(
+        kcat_sCG,
+        concentrazione_enzima_sCG,
+        km_sCG,
+        variazione_GTP[j])
+    num_sol5 = solve_ivp(ode_fn5, [tempo_reazione_enzima[j - 1], tempo_reazione_enzima[j]],
+                         [variazione_cGMP_con_sildenafil[j - 1]],
+                         method='RK45', dense_output=True)
+    x_num_sol5 = num_sol5.sol([tempo_reazione_enzima[j - 1], tempo_reazione_enzima[j]]).T
+    variazione_cGMP_con_sildenafil[j] = x_num_sol5[1]
+    if variazione_cGMP_con_sildenafil[i] < 0.3e-6:
+        coefficiente_hill = coefficienti_hill[0]
+    elif 0.3e-6 <= variazione_cGMP_con_sildenafil[i] < 1e-6:
+        coefficiente_hill = coefficienti_hill[1]
+    elif 1e-6 <= variazione_cGMP_con_sildenafil[i] < 10e-6:
+        coefficiente_hill = coefficienti_hill[2]
+    elif variazione_cGMP_con_sildenafil[i] >= 10e-6:
+        coefficiente_hill = coefficienti_hill[3]
+
+plt.subplot(2, 1, 2)
+plt.plot(tempo_reazione_enzima, variazione_cGMP_con_sildenafil)
+plt.subplot(2, 1, 1)
+plt.plot(tempo_reazione_enzima, variazione_cGMP)
 plt.show()
