@@ -1,0 +1,5 @@
+# Il sildenafil compete con il cGMP per il sito catalitico della PDE5, quindi il sildenfail è un inibitore competitivo dell'enzima
+
+def inibizione_competitiva_sildenafil(kcat,concentrazione_enzima,km,concentrazione_substrato,coefficiente_hill,Ki,concentrazione_inibitore):
+    y = (kcat*concentrazione_enzima*(concentrazione_substrato**coefficiente_hill))/((km**coefficiente_hill)*(1+concentrazione_inibitore/Ki)+(concentrazione_substrato**coefficiente_hill))
+    return y
