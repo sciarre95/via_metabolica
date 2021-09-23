@@ -1,9 +1,8 @@
-import sympy as sp
-#La velocità di creazione del prodotto in una reazione catalizzata da un enzima viene rappresentata dalle eqauzioni
-#di Michaelis-Menten, le quali affermano che V=(Vmax*[S])/(Km+[S])
-#Vmax e Km sono costanti cinetiche intrinseche dell'enzima, mentre [S] è la concentrazione del substrato
-#Vmax=kcat*[E] dove [E] è la concentrazione dell'enzima e kcat è il numero di turnover o costante catalitica
+# La velocità di creazione del prodotto (o consumo del substrato) in una reazione catalizzata da un enzima viene rappresentata dalle eqauzioni
+# di Michaelis-Menten, le quali affermano che V=(Vmax*[S])/(Km+[S])
+# Vmax e Km sono costanti cinetiche intrinseche dell'enzima, mentre [S] è la concentrazione del substrato
+# Vmax=kcat*[E] dove [E] è la concentrazione dell'enzima e kcat è il numero di turnover o costante catalitica
 
-def cinetica_michaelis_menten(kcat,concentrazione_enzima,km,concentrazione_substrato):
-    V=(kcat*concentrazione_enzima*concentrazione_substrato)/(km+concentrazione_substrato)
+def cinetica_michaelis_menten(kcat, concentrazione_enzima, km, concentrazione_substrato):
+    V = (kcat * concentrazione_enzima * concentrazione_substrato) / (km + concentrazione_substrato)
     return V
