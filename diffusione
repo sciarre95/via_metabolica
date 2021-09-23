@@ -1,0 +1,7 @@
+#Quando la legge di Fick viene applicata per la diffusione di una molecola attraverso una membrana biologica assume
+#l'aspetto della seguente equazione, la quale ci permette di definire il numero di moli che nell'unità di tempo
+#passa dalla zona con più alta concentrazione alla zona a più bassa concentrazione
+
+def diffusione(coefficiente_di_diffusione,area_membrana,spessore_membrana,concentrazione1,concentrazione2,t1,t2):
+    moli_diffuse=(coefficiente_di_diffusione*area_membrana*(concentrazione1-concentrazione2)*(t1-t2))/spessore_membrana
+    return moli_diffuse
