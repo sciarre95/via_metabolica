@@ -1,0 +1,27 @@
+from scipy.integrate import solve_ivp
+import numpy as np
+
+
+#Stiamo considerando due reazioni chimiche in serie. La prima reazione ha una cinetica del secondo ordine, mentre la seconda ha una cinetica del primo ordine
+#A+B->I->P
+
+#Questa funzione vuole rappresentrare la concentrazione di I nel tempo
+#Si ricava risolvendo l'equazione differenziale dI/dt=-k2*I+k1*A*B quindi una equazione differenziale lineare del primo ordine
+
+def prodotto_intermedio_serie_2_1(A0,B0,k1,k2,t_inizio,t_fine,x_inizio,metodo,time):
+    ode_fn = lambda t, x: -k2 * x + k1 * A0 * B0 * (((B0 - A0) ** 2) * np.exp(k1 * t * (A0 - B0))) / ((B0 - A0 * np.exp(k1 * t * (A0 - B0))) ** 2)
+    num_sol = solve_ivp(ode_fn, [t_inizio, t_fine], [x_inizio], method=metodo, dense_output=True)
+    x_num_sol=num_sol.sol(time).T
+    y=[]
+    for i in range(len(x_num_sol)):
+        if x_num_sol[i] <= 0 and i != 0:
+            y.append(i)
+    if len(y)!=0:
+        for i in range(len(x_num_sol)):
+            if i >= y[0]:
+                x_num_sol[i] = 0
+    return x_num_sol
+
+#Python non sa che I è una concentrazione, lui risolve semplicemente l'equazione differenziale e farebbe
+#assumere ad I anche valori negativi. Per questo faccio in modo che quando I raggiunge il valore 0 la prima volta,
+#quindi si è consumato tutto, rimane 0.
