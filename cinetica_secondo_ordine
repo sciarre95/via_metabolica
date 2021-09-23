@@ -1,20 +1,12 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
-#Stiamo considerando una reazione chimica con cinetica del secondo ordine
-#A+B->P
+# Stiamo considerando una reazione chimica irreversibile con cinetica del secondo ordine A+B->P
+# Siamo interessati a calcolare l'andamento della concentrazione dei due substrati A e B nel tempo
 
-#decadimento substrato A in una reazione chimica con cinetica del secondo ordine
-def concentrazione_A(A0,B0,k,t):
-    y=(A0*(B0-A0)*np.exp(k*t*(A0-B0)))/(B0-A0*np.exp(k*t*(A0-B0)))
+def concentrazione_A(A0, B0, k, t):
+    y = (A0 * (B0 - A0) * np.exp(k * t * (A0 - B0))) / (B0 - A0 * np.exp(k * t * (A0 - B0)))
     return y
 
-#decadimento substrato B in una reazione chimica con cinetica del secondo ordine
-def concentraziione_B(A0,B0,k,t):
-    y=(B0*(B0-A0))/(B0-A0*np.exp(k*t*(A0-B0)))
-    return y
-
-#formazione prodotto in una reazione chimica con cinetica del secondo ordine
-def concentrazione_P(A0,B0,k,t):
-    y=(B0*(np.exp(k*t*(B0-A0))-1))/(np.exp(k*t*(B0-A0))*(B0/A0)-1)
+def concentrazione_B(A0, B0, k, t):
+    y = (B0 * (B0 - A0)) / (B0 - A0 * np.exp(k * t * (A0 - B0)))
     return y
