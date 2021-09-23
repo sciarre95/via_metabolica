@@ -1,8 +1,11 @@
-def cinetica_allosterica(kcat,concentrazione_enzima,km,concentrazione_substrato,coefficiente_hill):
-    y=(kcat*concentrazione_enzima*(concentrazione_substrato**coefficiente_hill))/((km**coefficiente_hill)+(concentrazione_substrato**coefficiente_hill))
-    return y
-#La fosfodiesterasi di tipo 5, PDE5, non ha una cinetica standard di michaelis-menten. Questa proteina presenta in ciascuna delle sue due subunità, nella regione regolatrice,
-#un dominio di legame per il cGMP, denominato GAF-A. Proprio il legame tra cGMP e GAF-A permette l'attivazione allosterica della proteina, quindi la formula standard di
-#michaelis-menten deve essere modificata per tenere conto di ciò. Gli enzimi allosterici presentano un andamento della velocità in funzione del substrato che è una sigmoide
-#caratterizzata dal coefficiente di Hill. Quest'ultimo rappresenta il livello di cooperatività, teoricamente è uguale al numero dei siti di legame possibili (in questo caso 2),
-#sperimentalmente si trova che il coefficiente di Hill è inferiore o al massimo uguale a quello teorico.
+# La fosfodiesterasi di tipo 5, PDE5, non ha una cinetica standard di Michaelis-Menten, infatti si tratta di un enzima allosterico.
+# Gli enzimi allosterici presentano un andamento della velocità in funzione del substrato che è una sigmoide
+# caratterizzata dal coefficiente di Hill. Quest'ultimo rappresenta il livello di cooperatività, teoricamente è uguale al numero dei siti di legame possibili,
+# sperimentalmente si trova che il coefficiente di Hill è inferiore o al massimo uguale a quello teorico.
+# Il punto di partenza è sempre l'equazione di Michaelis-Menten, la quale viene modificata nel seguente modo: sia il termine legato
+# alla concentrazione del substrato al numeratore sia quello al denominatore e sia la costante di Michaelis-Menten vengono elevati al coefficiente di Hill
+
+def cinetica_allosterica(kcat, concentrazione_enzima, km, concentrazione_substrato, coefficiente_hill):
+    V = (kcat * concentrazione_enzima * (concentrazione_substrato ** coefficiente_hill)) / (
+                (km ** coefficiente_hill) + (concentrazione_substrato ** coefficiente_hill))
+    return V
