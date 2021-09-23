@@ -1,27 +1,28 @@
 from scipy.integrate import solve_ivp
 import numpy as np
 
+# Stiamo considerando due reazioni chimiche in serie irreversibili. La prima reazione ha una cinetica del secondo ordine, mentre la seconda ha una cinetica del primo ordine
+# A+B->I->P
+# Questa funzione vuole rappresentrare la concentrazione di I nel tempo.
+# Si ricava risolvendo l'equazione differenziale dI/dt=-k2*I+k1*A*B, dove con A e B si indica la variazione della concentrazione
+# dei due substrati nel tempo. Nel file cinetica_serie_2_1 vengono descritti gli andamenti delle concentrazioni dei substrati
+# per una reazione chimica irreversibile con cinetica del secondo ordine.
 
-#Stiamo considerando due reazioni chimiche in serie. La prima reazione ha una cinetica del secondo ordine, mentre la seconda ha una cinetica del primo ordine
-#A+B->I->P
-
-#Questa funzione vuole rappresentrare la concentrazione di I nel tempo
-#Si ricava risolvendo l'equazione differenziale dI/dt=-k2*I+k1*A*B quindi una equazione differenziale lineare del primo ordine
-
-def prodotto_intermedio_serie_2_1(A0,B0,k1,k2,t_inizio,t_fine,x_inizio,metodo,time):
-    ode_fn = lambda t, x: -k2 * x + k1 * A0 * B0 * (((B0 - A0) ** 2) * np.exp(k1 * t * (A0 - B0))) / ((B0 - A0 * np.exp(k1 * t * (A0 - B0))) ** 2)
+def prodotto_intermedio_serie_2_1(A0, B0, k1, k2, t_inizio, t_fine, x_inizio, metodo, time):
+    ode_fn = lambda t, x: -k2 * x + k1 * A0 * B0 * (((B0 - A0) ** 2) * np.exp(k1 * t * (A0 - B0))) / (
+                (B0 - A0 * np.exp(k1 * t * (A0 - B0))) ** 2)
     num_sol = solve_ivp(ode_fn, [t_inizio, t_fine], [x_inizio], method=metodo, dense_output=True)
-    x_num_sol=num_sol.sol(time).T
-    y=[]
-    for i in range(len(x_num_sol)):
+    x_num_sol = num_sol.sol(time).T
+    y = []   # definisco una lista vuota y
+    for i in range(len(x_num_sol)):  # scansiono il vettore per trovare il primo indice diverso da 0 in cui il valore è nullo
         if x_num_sol[i] <= 0 and i != 0:
             y.append(i)
-    if len(y)!=0:
-        for i in range(len(x_num_sol)):
+    if len(y) != 0:  # verifico che la lista non sia vuota
+        for i in range(len(x_num_sol)):   # a partire dal primo indice trovato in poi modifico i valori affinché siano nulli
             if i >= y[0]:
                 x_num_sol[i] = 0
     return x_num_sol
 
-#Python non sa che I è una concentrazione, lui risolve semplicemente l'equazione differenziale e farebbe
-#assumere ad I anche valori negativi. Per questo faccio in modo che quando I raggiunge il valore 0 la prima volta,
-#quindi si è consumato tutto, rimane 0.
+# Python non sa che il risultato dell'equazione differenziale è una concentrazione, lui risolve semplicemente l'equazione differenziale e farebbe
+# assumere anche valori negativi. Per questo faccio in modo che quando il risultato raggiunge il valore 0 la prima volta,
+# quindi si è consumato tutto, rimane 0.
