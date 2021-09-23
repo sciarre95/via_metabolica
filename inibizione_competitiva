@@ -1,5 +1,11 @@
-# Il sildenafil compete con il cGMP per il sito catalitico della PDE5, quindi il sildenfail è un inibitore competitivo dell'enzima
+# Il Sildenafil compete con il cGMP per il sito catalitico della PDE5, essendo il Sildenfail un inibitore competitivo dell'enzima
+# Si parte dalla formula classica di Michaelis-Menten con l'opportuna modifica: la presenza di un inibitore aumenta la costante
+# di Michaelis-Menten Km di un fattore pari al rapporto tra la concentrazione dell'inibitore e la costante di dissociazione Ki
 
-def inibizione_competitiva_sildenafil(kcat,concentrazione_enzima,km,concentrazione_substrato,coefficiente_hill,Ki,concentrazione_inibitore):
-    y = (kcat*concentrazione_enzima*(concentrazione_substrato**coefficiente_hill))/((km**coefficiente_hill)*(1+concentrazione_inibitore/Ki)+(concentrazione_substrato**coefficiente_hill))
-    return y
+
+def inibizione_competitiva_sildenafil(kcat, concentrazione_enzima, km, concentrazione_substrato, coefficiente_hill, Ki,
+                                      concentrazione_inibitore):
+    V = (kcat * concentrazione_enzima * (concentrazione_substrato ** coefficiente_hill)) / (
+                (km ** coefficiente_hill) * (1 + concentrazione_inibitore / Ki) + (
+                    concentrazione_substrato ** coefficiente_hill))
+    return V
